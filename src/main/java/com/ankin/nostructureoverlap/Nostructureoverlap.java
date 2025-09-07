@@ -40,6 +40,9 @@ public class Nostructureoverlap {
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
         LOGGER.info("NoStructureOverlap: Server starting - structure overlap prevention active");
+        if (Config.preventRepeatedAttempts) {
+            LOGGER.info("NoStructureOverlap: Repeated attempt prevention enabled - blocked attempts will be tracked and cleaned up automatically");
+        }
     }
     
     @SubscribeEvent
@@ -68,6 +71,19 @@ public class Nostructureoverlap {
                     context.getSource().sendSuccess(() -> Component.literal("Cleared all tracked structures"), true);
                     return 1;
                 }))
+            .then(Commands.literal("clearBlocked")
+                .executes(context -> {
+                    StructureOverlapManager.clearBlockedAttempts();
+                    context.getSource().sendSuccess(() -> Component.literal("Cleared all blocked attempts"), true);
+                    return 1;
+                }))
+            .then(Commands.literal("cleanup")
+                .executes(context -> {
+                    StructureOverlapManager.cleanupExpiredAttempts();
+                    int blockedCount = StructureOverlapManager.getBlockedAttemptsCount();
+                    context.getSource().sendSuccess(() -> Component.literal("Cleaned up expired attempts. Remaining blocked attempts: " + blockedCount), true);
+                    return 1;
+                }))
             .then(Commands.literal("toggle")
                 .executes(context -> {
                     Config.enableOverlapPrevention = !Config.enableOverlapPrevention;
@@ -80,9 +96,11 @@ public class Nostructureoverlap {
                     StringBuilder info = new StringBuilder();
                     info.append("NoStructureOverlap Info:\n");
                     info.append("• Overlap Prevention: ").append(Config.enableOverlapPrevention ? "Enabled" : "Disabled").append("\n");
+                    info.append("• Prevent Repeated Attempts: ").append(Config.preventRepeatedAttempts ? "Enabled" : "Disabled").append("\n");
                     info.append("• Min Overlap Distance: ").append(Config.minOverlapDistance).append(" blocks\n");
                     info.append("• Log Blocked Structures: ").append(Config.logBlockedStructures ? "Enabled" : "Disabled").append("\n");
                     info.append("• Tracked Structures: ").append(StructureOverlapManager.getStructureCount()).append("\n");
+                    info.append("• Blocked Attempts: ").append(StructureOverlapManager.getBlockedAttemptsCount()).append("\n");
                     
                     if (!Config.structureWhitelist.isEmpty()) {
                         info.append("• Whitelisted Structures: ").append(Config.structureWhitelist.size()).append("\n");

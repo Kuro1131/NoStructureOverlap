@@ -11,6 +11,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class StructureOverlapManager {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Map<String, Set<StructurePlacement>> placedStructures = new ConcurrentHashMap<>();
+    private static final Map<String, Set<BlockedAttempt>> blockedAttempts = new ConcurrentHashMap<>();
+    private static final long BLOCKED_ATTEMPT_EXPIRY_TIME = 300000; // 5 minutes in milliseconds
     
     public static class StructurePlacement {
         public final BlockPos center;
@@ -41,6 +43,32 @@ public class StructureOverlapManager {
         }
     }
     
+    public static class BlockedAttempt {
+        public final BlockPos center;
+        public final int radius;
+        public final ResourceLocation structureId;
+        public final long timestamp;
+        public final String reason;
+        
+        public BlockedAttempt(BlockPos center, int radius, ResourceLocation structureId, String reason) {
+            this.center = center;
+            this.radius = radius;
+            this.structureId = structureId;
+            this.timestamp = System.currentTimeMillis();
+            this.reason = reason;
+        }
+        
+        public boolean isExpired() {
+            return System.currentTimeMillis() - timestamp > BLOCKED_ATTEMPT_EXPIRY_TIME;
+        }
+        
+        public boolean isNearby(BlockPos otherCenter, int otherRadius) {
+            double distance = Math.sqrt(center.distSqr(otherCenter));
+            double minDistance = Math.max(radius, otherRadius) * 0.5; // Allow some tolerance
+            return distance < minDistance;
+        }
+    }
+    
     public static boolean canPlaceStructure(BlockPos center, int radius, ResourceLocation structureId) {
         if (!Config.enableOverlapPrevention) {
             return true;
@@ -54,6 +82,16 @@ public class StructureOverlapManager {
                 LOGGER.debug("Structure {} is disabled by configuration", structureId);
             }
             return true; // Allow placement if structure is disabled
+        }
+        
+        // Check if we've recently blocked a similar structure in this area
+        if (Config.preventRepeatedAttempts) {
+            if (hasRecentBlockedAttempt(center, radius, structureId)) {
+                if (Config.logBlockedStructures) {
+                    LOGGER.debug("Blocking structure {} at {} - recent blocked attempt in area", structureId, center);
+                }
+                return false;
+            }
         }
         
         StructurePlacement newPlacement = new StructurePlacement(center, radius, structureId);
@@ -86,6 +124,15 @@ public class StructureOverlapManager {
                                     structureId, center, existing.structureId, existing.center,
                                     Math.sqrt(center.distSqr(existing.center)), effectiveMinDistance);
                             }
+                            
+                            // Record this blocked attempt
+                            if (Config.preventRepeatedAttempts) {
+                                recordBlockedAttempt(center, radius, structureId, 
+                                    "Overlap with " + existing.structureId + " at distance " + 
+                                    String.format("%.1f", Math.sqrt(center.distSqr(existing.center))) + 
+                                    " (min: " + effectiveMinDistance + ")");
+                            }
+                            
                             return false;
                         }
                     }
@@ -135,5 +182,56 @@ public class StructureOverlapManager {
     
     public static int getStructureCount() {
         return placedStructures.values().stream().mapToInt(Set::size).sum();
+    }
+    
+    public static int getBlockedAttemptsCount() {
+        return blockedAttempts.values().stream().mapToInt(Set::size).sum();
+    }
+    
+    private static boolean hasRecentBlockedAttempt(BlockPos center, int radius, ResourceLocation structureId) {
+        String structureIdString = structureId.toString();
+        Set<BlockedAttempt> attempts = blockedAttempts.get(structureIdString);
+        
+        if (attempts == null || attempts.isEmpty()) {
+            return false;
+        }
+        
+        // Clean up expired attempts while checking
+        attempts.removeIf(BlockedAttempt::isExpired);
+        
+        // Check if there's a recent blocked attempt nearby
+        for (BlockedAttempt attempt : attempts) {
+            if (attempt.isNearby(center, radius)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    private static void recordBlockedAttempt(BlockPos center, int radius, ResourceLocation structureId, String reason) {
+        String structureIdString = structureId.toString();
+        BlockedAttempt attempt = new BlockedAttempt(center, radius, structureId, reason);
+        
+        blockedAttempts.computeIfAbsent(structureIdString, k -> ConcurrentHashMap.newKeySet()).add(attempt);
+        
+        if (Config.logBlockedStructures) {
+            LOGGER.debug("Recorded blocked attempt for {} at {}: {}", structureId, center, reason);
+        }
+    }
+    
+    public static void clearBlockedAttempts() {
+        blockedAttempts.clear();
+        LOGGER.info("Cleared all blocked attempts");
+    }
+    
+    public static void cleanupExpiredAttempts() {
+        int totalBefore = getBlockedAttemptsCount();
+        blockedAttempts.values().forEach(attempts -> attempts.removeIf(BlockedAttempt::isExpired));
+        int totalAfter = getBlockedAttemptsCount();
+        
+        if (totalBefore > totalAfter) {
+            LOGGER.debug("Cleaned up {} expired blocked attempts", totalBefore - totalAfter);
+        }
     }
 }

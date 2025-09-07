@@ -5,6 +5,50 @@ All notable changes to the NoStructureOverlap mod will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2025-01-07
+
+### Fixed
+- **Structure Name Configuration** - Fixed structure names in default blacklist to use correct Minecraft registry names
+- **Configuration Comments** - Added helpful comments to all structure-related config options explaining the correct naming format
+
+### Changed
+- **Default Blacklist** - Updated to use correct structure names:
+  - `minecraft:jigsawstructure` (was `minecraft:jigsaw_structure`)
+  - `minecraft:netherfossilstructure` (was `minecraft:nether_fossil`)
+  - `minecraft:fossilstructure` (was `minecraft:desert_pyramid`)
+  - `minecraft:jungletemplestructure` (was `minecraft:jungle_pyramid`)
+  - `minecraft:swamphutstructure` (was `minecraft:swamp_hut`)
+  - `minecraft:igloostructure` (was `minecraft:igloo`)
+  - `minecraft:alternatejigsawstructure` (new addition)
+
+## [1.3.0] - 2025-01-07
+
+### Added
+- **Blocked Attempts Tracking** - Prevents repeated attempts to place structures in the same area after blocking
+- **Smart Retry Prevention** - World generation no longer wastes time repeatedly trying to place blocked structures
+- **Automatic Cleanup** - Expired blocked attempts are automatically cleaned up to prevent memory leaks
+- **New Configuration Option** - `preventRepeatedAttempts` setting to control blocked attempts behavior (enabled by default)
+- **New Commands**:
+  - `/nostructureoverlap clearBlocked` - Clear all blocked attempts
+  - `/nostructureoverlap cleanup` - Manually clean up expired blocked attempts
+- **Enhanced Status Commands** - `/nostructureoverlap info` now shows blocked attempts count
+
+### Changed
+- **Performance Optimization** - Significantly reduced unnecessary overlap calculations for repeatedly blocked structures
+- **Memory Management** - Blocked attempts expire after 5 minutes to prevent memory accumulation
+- **World Generation Efficiency** - Game no longer repeatedly attempts to place structures in known blocked areas
+
+### Technical Details
+- Added `BlockedAttempt` class to track failed structure placement attempts
+- Implemented proximity-based blocked attempt detection with configurable tolerance
+- Enhanced `StructureOverlapManager` with blocked attempts tracking and cleanup
+- Added automatic cleanup during blocked attempt checks to maintain performance
+- Improved logging to show blocked attempt reasons and cleanup statistics
+
+### Configuration
+- **New config option in `nostructureoverlap-common.toml`:**
+  - `preventRepeatedAttempts` - Enable/disable blocked attempts tracking (default: true)
+
 ## [1.2.2] - 2025-09-07
 
 ### Fixed
@@ -41,19 +85,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Default Blacklisted Structures
 The following structures are now ignored by default (can be overridden in config):
-- `minecraft:jigsaw_structure`
-- `minecraft:nether_fossil`
-- `minecraft:desert_pyramid`
-- `minecraft:jungle_pyramid`
-- `minecraft:swamp_hut`
-- `minecraft:igloo`
-- `minecraft:shipwreck`
-- `minecraft:shipwreck_beached`
-- `minecraft:buried_treasure`
-- `minecraft:ocean_ruin_cold`
-- `minecraft:ocean_ruin_warm`
-- `minecraft:ruined_portal` (all variants)
-- `minecraft:ancient_city`
+- `minecraft:jigsawstructure`
+- `minecraft:netherfossilstructure`
+- `minecraft:fossilstructure`
+- `minecraft:jungletemplestructure`
+- `minecraft:swamphutstructure`
+- `minecraft:igloostructure`
+- `minecraft:alternatejigsawstructure`
 
 ### Technical Details
 - Added validation methods for configuration values

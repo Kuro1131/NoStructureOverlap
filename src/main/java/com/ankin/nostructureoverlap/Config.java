@@ -19,50 +19,50 @@ public class Config {
             .comment("Log when structures are blocked due to overlap")
             .define("logBlockedStructures", true);
 
+    private static final ModConfigSpec.BooleanValue PREVENT_REPEATED_ATTEMPTS = BUILDER
+            .comment("Prevent repeated attempts to place structures in the same area after blocking")
+            .define("preventRepeatedAttempts", true);
+
     private static final ModConfigSpec.IntValue MIN_OVERLAP_DISTANCE = BUILDER
             .comment("Minimum distance between structure centers to prevent overlap (in blocks)")
             .defineInRange("minOverlapDistance", 16, 1, 1000);
 
     private static final ModConfigSpec.ConfigValue<List<? extends String>> STRUCTURE_WHITELIST = BUILDER
-            .comment("List of structure IDs that should have overlap prevention enabled. If empty, all structures are included.")
+            .comment("List of structure IDs that should have overlap prevention enabled. If empty, all structures are included.",
+                    "Note: Use the actual Minecraft registry names (e.g., minecraft:village_plains, minecraft:stronghold)")
             .define("structureWhitelist", Arrays.asList(), Config::isValidStructureIdList);
 
     private static final ModConfigSpec.ConfigValue<List<? extends String>> STRUCTURE_BLACKLIST = BUILDER
-            .comment("List of structure IDs that should have overlap prevention disabled")
+            .comment("List of structure IDs that should have overlap prevention disabled",
+                    "Note: Use the actual Minecraft registry names, not display names.",
+                    "Common structure names: minecraft:jigsawstructure, minecraft:netherfossilstructure,",
+                    "minecraft:fossilstructure, minecraft:jungletemplestructure, minecraft:swamphutstructure,",
+                    "minecraft:igloostructure, minecraft:alternatejigsawstructure, etc.")
             .define("structureBlacklist", Arrays.asList(
-                "minecraft:jigsaw_structure",
-                "minecraft:nether_fossil",
-                "minecraft:desert_pyramid",
-                "minecraft:jungle_pyramid",
-                "minecraft:swamp_hut",
-                "minecraft:igloo",
-                "minecraft:shipwreck",
-                "minecraft:shipwreck_beached",
-                "minecraft:buried_treasure",
-                "minecraft:ocean_ruin_cold",
-                "minecraft:ocean_ruin_warm",
-                "minecraft:ruined_portal",
-                "minecraft:ruined_portal_desert",
-                "minecraft:ruined_portal_jungle",
-                "minecraft:ruined_portal_mountain",
-                "minecraft:ruined_portal_nether",
-                "minecraft:ruined_portal_ocean",
-                "minecraft:ruined_portal_swamp",
-                "minecraft:ancient_city"
+                "minecraft:jigsawstructure",
+                "minecraft:netherfossilstructure",
+                "minecraft:fossilstructure",
+                "minecraft:jungletemplestructure",
+                "minecraft:swamphutstructure",
+                "minecraft:igloostructure",
+                "minecraft:alternatejigsawstructure"
             ), Config::isValidStructureIdList);
 
     private static final ModConfigSpec.ConfigValue<List<? extends String>> STRUCTURE_SPECIFIC_DISTANCES_RAW = BUILDER
-            .comment("Per-structure minimum overlap distances. Format: [\"structure_id=distance\", \"another_id=32\"]")
+            .comment("Per-structure minimum overlap distances. Format: [\"structure_id=distance\", \"another_id=32\"]",
+                    "Note: Use actual Minecraft registry names (e.g., \"minecraft:village_plains=64\", \"minecraft:stronghold=32\")")
             .define("structureSpecificDistances", Arrays.asList(), Config::isValidStructureDistanceList);
 
     private static final ModConfigSpec.ConfigValue<List<? extends String>> STRUCTURE_SPECIFIC_ENABLED_RAW = BUILDER
-            .comment("Per-structure enable/disable settings. Format: [\"structure_id=true\", \"another_id=false\"]")
+            .comment("Per-structure enable/disable settings. Format: [\"structure_id=true\", \"another_id=false\"]",
+                    "Note: Use actual Minecraft registry names (e.g., \"minecraft:village_plains=true\", \"minecraft:stronghold=false\")")
             .define("structureSpecificEnabled", Arrays.asList(), Config::isValidStructureBooleanList);
 
     static final ModConfigSpec SPEC = BUILDER.build();
 
     public static boolean enableOverlapPrevention;
     public static boolean logBlockedStructures;
+    public static boolean preventRepeatedAttempts;
     public static int minOverlapDistance;
     public static Set<String> structureWhitelist;
     public static Set<String> structureBlacklist;
@@ -73,6 +73,7 @@ public class Config {
     static void onLoad(final ModConfigEvent event) {
         enableOverlapPrevention = ENABLE_OVERLAP_PREVENTION.get();
         logBlockedStructures = LOG_BLOCKED_STRUCTURES.get();
+        preventRepeatedAttempts = PREVENT_REPEATED_ATTEMPTS.get();
         minOverlapDistance = MIN_OVERLAP_DISTANCE.get();
         structureWhitelist = new HashSet<>(STRUCTURE_WHITELIST.get());
         structureBlacklist = new HashSet<>(STRUCTURE_BLACKLIST.get());
