@@ -5,6 +5,16 @@ All notable changes to the NoStructureOverlap mod will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2025-09-07
+
+### Fixed
+- **Configuration serialization crash** - Fixed TOML serialization issues by changing structure-specific configuration from Map format to List format for better compatibility with NeoForge's configuration system
+
+## [1.2.1] - 2025-09-07
+
+### Fixed
+- **Configuration serialization crash** - Fixed `Unsupported value type: class java.util.HashMap` error by using `LinkedHashMap` instead of `HashMap` for structure-specific configuration maps
+
 ## [1.2] - 2025-09-07
 
 ### Added

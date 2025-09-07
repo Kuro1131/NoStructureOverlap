@@ -51,13 +51,13 @@ public class Config {
                 "minecraft:ancient_city"
             ), Config::isValidStructureIdList);
 
-    private static final ModConfigSpec.ConfigValue<Map<String, Integer>> STRUCTURE_SPECIFIC_DISTANCES = BUILDER
-            .comment("Per-structure minimum overlap distances. Format: \"structure_id=distance\"")
-            .define("structureSpecificDistances", new HashMap<>(), Config::isValidStructureDistanceMap);
+    private static final ModConfigSpec.ConfigValue<List<? extends String>> STRUCTURE_SPECIFIC_DISTANCES_RAW = BUILDER
+            .comment("Per-structure minimum overlap distances. Format: [\"structure_id=distance\", \"another_id=32\"]")
+            .define("structureSpecificDistances", Arrays.asList(), Config::isValidStructureDistanceList);
 
-    private static final ModConfigSpec.ConfigValue<Map<String, Boolean>> STRUCTURE_SPECIFIC_ENABLED = BUILDER
-            .comment("Per-structure enable/disable settings. Format: \"structure_id=true/false\"")
-            .define("structureSpecificEnabled", new HashMap<>(), Config::isValidStructureBooleanMap);
+    private static final ModConfigSpec.ConfigValue<List<? extends String>> STRUCTURE_SPECIFIC_ENABLED_RAW = BUILDER
+            .comment("Per-structure enable/disable settings. Format: [\"structure_id=true\", \"another_id=false\"]")
+            .define("structureSpecificEnabled", Arrays.asList(), Config::isValidStructureBooleanList);
 
     static final ModConfigSpec SPEC = BUILDER.build();
 
@@ -76,8 +76,28 @@ public class Config {
         minOverlapDistance = MIN_OVERLAP_DISTANCE.get();
         structureWhitelist = new HashSet<>(STRUCTURE_WHITELIST.get());
         structureBlacklist = new HashSet<>(STRUCTURE_BLACKLIST.get());
-        structureSpecificDistances = new HashMap<>(STRUCTURE_SPECIFIC_DISTANCES.get());
-        structureSpecificEnabled = new HashMap<>(STRUCTURE_SPECIFIC_ENABLED.get());
+        
+        // Parse structure-specific distances from list format
+        structureSpecificDistances = new LinkedHashMap<>();
+        for (String entry : STRUCTURE_SPECIFIC_DISTANCES_RAW.get()) {
+            String[] parts = entry.split("=", 2);
+            if (parts.length == 2) {
+                try {
+                    structureSpecificDistances.put(parts[0], Integer.parseInt(parts[1]));
+                } catch (NumberFormatException e) {
+                    // Skip invalid entries
+                }
+            }
+        }
+        
+        // Parse structure-specific enabled settings from list format
+        structureSpecificEnabled = new LinkedHashMap<>();
+        for (String entry : STRUCTURE_SPECIFIC_ENABLED_RAW.get()) {
+            String[] parts = entry.split("=", 2);
+            if (parts.length == 2) {
+                structureSpecificEnabled.put(parts[0], Boolean.parseBoolean(parts[1]));
+            }
+        }
     }
 
     // Validation methods for config values
@@ -98,32 +118,37 @@ public class Config {
         return true;
     }
 
-    private static boolean isValidStructureDistanceMap(Object obj) {
-        if (!(obj instanceof Map)) return false;
-        Map<?, ?> map = (Map<?, ?>) obj;
-        for (Map.Entry<?, ?> entry : map.entrySet()) {
-            if (!(entry.getKey() instanceof String) || !(entry.getValue() instanceof Integer)) {
-                return false;
-            }
-            String key = (String) entry.getKey();
-            Integer value = (Integer) entry.getValue();
-            if (!isValidStructureId(key) || value < 1 || value > 1000) {
+    private static boolean isValidStructureDistanceList(Object obj) {
+        if (!(obj instanceof List)) return false;
+        List<?> list = (List<?>) obj;
+        for (Object item : list) {
+            if (!(item instanceof String)) return false;
+            String str = (String) item;
+            if (!str.contains("=")) return false;
+            String[] parts = str.split("=", 2);
+            if (parts.length != 2) return false;
+            if (!isValidStructureId(parts[0])) return false;
+            try {
+                int value = Integer.parseInt(parts[1]);
+                if (value < 1 || value > 1000) return false;
+            } catch (NumberFormatException e) {
                 return false;
             }
         }
         return true;
     }
 
-    private static boolean isValidStructureBooleanMap(Object obj) {
-        if (!(obj instanceof Map)) return false;
-        Map<?, ?> map = (Map<?, ?>) obj;
-        for (Map.Entry<?, ?> entry : map.entrySet()) {
-            if (!(entry.getKey() instanceof String) || !(entry.getValue() instanceof Boolean)) {
-                return false;
-            }
-            if (!isValidStructureId(entry.getKey())) {
-                return false;
-            }
+    private static boolean isValidStructureBooleanList(Object obj) {
+        if (!(obj instanceof List)) return false;
+        List<?> list = (List<?>) obj;
+        for (Object item : list) {
+            if (!(item instanceof String)) return false;
+            String str = (String) item;
+            if (!str.contains("=")) return false;
+            String[] parts = str.split("=", 2);
+            if (parts.length != 2) return false;
+            if (!isValidStructureId(parts[0])) return false;
+            if (!parts[1].equals("true") && !parts[1].equals("false")) return false;
         }
         return true;
     }
