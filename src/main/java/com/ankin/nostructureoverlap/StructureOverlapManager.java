@@ -26,9 +26,14 @@ public class StructureOverlapManager {
         }
         
         public boolean overlaps(StructurePlacement other) {
-            double distance = center.distSqr(other.center);
-            double minDistance = (radius + other.radius) * (radius + other.radius);
+            double distance = Math.sqrt(center.distSqr(other.center));
+            double minDistance = radius + other.radius;
             return distance < minDistance;
+        }
+        
+        public boolean overlapsWithDistance(StructurePlacement other, int minOverlapDistance) {
+            double distance = Math.sqrt(center.distSqr(other.center));
+            return distance < minOverlapDistance;
         }
         
         public boolean isSmallerThan(StructurePlacement other) {
@@ -41,20 +46,45 @@ public class StructureOverlapManager {
             return true;
         }
         
+        String structureIdString = structureId.toString();
+        
+        // Check if this specific structure is enabled
+        if (!Config.isStructureEnabled(structureIdString)) {
+            if (Config.logBlockedStructures) {
+                LOGGER.debug("Structure {} is disabled by configuration", structureId);
+            }
+            return true; // Allow placement if structure is disabled
+        }
+        
         StructurePlacement newPlacement = new StructurePlacement(center, radius, structureId);
         
+        // Get structure-specific distance or use default
+        int minDistance = Config.getStructureDistance(structureIdString);
+        
         // Check for overlaps in nearby chunks
-        for (int x = -2; x <= 2; x++) {
-            for (int z = -2; z <= 2; z++) {
+        int searchRadius = Math.max(radius, minDistance) / 16 + 2; // Convert to chunk radius
+        for (int x = -searchRadius; x <= searchRadius; x++) {
+            for (int z = -searchRadius; z <= searchRadius; z++) {
                 String nearbyChunkKey = getChunkKey(center.offset(x * 16, 0, z * 16));
                 Set<StructurePlacement> nearbyStructures = placedStructures.get(nearbyChunkKey);
                 
                 if (nearbyStructures != null) {
                     for (StructurePlacement existing : nearbyStructures) {
-                        if (newPlacement.overlaps(existing)) {
+                        // Check if existing structure is also enabled
+                        String existingStructureIdString = existing.structureId.toString();
+                        if (!Config.isStructureEnabled(existingStructureIdString)) {
+                            continue; // Skip disabled structures
+                        }
+                        
+                        // Use the minimum distance between the two structures
+                        int existingMinDistance = Config.getStructureDistance(existingStructureIdString);
+                        int effectiveMinDistance = Math.min(minDistance, existingMinDistance);
+                        
+                        if (newPlacement.overlapsWithDistance(existing, effectiveMinDistance)) {
                             if (Config.logBlockedStructures) {
-                                LOGGER.info("Blocking structure {} at {} due to overlap with {} at {}", 
-                                    structureId, center, existing.structureId, existing.center);
+                                LOGGER.info("Blocking structure {} at {} due to overlap with {} at {} (distance: {:.1f}, min: {})", 
+                                    structureId, center, existing.structureId, existing.center,
+                                    Math.sqrt(center.distSqr(existing.center)), effectiveMinDistance);
                             }
                             return false;
                         }
@@ -71,13 +101,24 @@ public class StructureOverlapManager {
             return;
         }
         
+        String structureIdString = structureId.toString();
+        
+        // Only track structures that are enabled
+        if (!Config.isStructureEnabled(structureIdString)) {
+            if (Config.logBlockedStructures) {
+                LOGGER.debug("Not tracking structure {} as it's disabled by configuration", structureId);
+            }
+            return;
+        }
+        
         StructurePlacement placement = new StructurePlacement(center, radius, structureId);
         String chunkKey = getChunkKey(center);
         
         placedStructures.computeIfAbsent(chunkKey, k -> ConcurrentHashMap.newKeySet()).add(placement);
         
         if (Config.logBlockedStructures) {
-            LOGGER.debug("Placed structure {} at {} with radius {}", structureId, center, radius);
+            LOGGER.debug("Placed structure {} at {} with radius {} (min distance: {})", 
+                structureId, center, radius, Config.getStructureDistance(structureIdString));
         }
     }
     
