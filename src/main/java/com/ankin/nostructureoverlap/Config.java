@@ -19,9 +19,10 @@ public class Config {
             .comment("Log when structures are blocked due to overlap")
             .define("logBlockedStructures", true);
 
-    private static final ModConfigSpec.BooleanValue PREVENT_REPEATED_ATTEMPTS = BUILDER
-            .comment("Prevent repeated attempts to place structures in the same area after blocking")
-            .define("preventRepeatedAttempts", true);
+
+    private static final ModConfigSpec.BooleanValue USE_3D_OVERLAP_DETECTION = BUILDER
+            .comment("Use 3D overlap detection instead of 2D (X-Z only). 3D prevents underground structures from blocking surface structures and vice versa.")
+            .define("use3DOverlapDetection", true);
 
     private static final ModConfigSpec.IntValue MIN_OVERLAP_DISTANCE = BUILDER
             .comment("Minimum distance between structure centers to prevent overlap (in blocks)")
@@ -62,7 +63,7 @@ public class Config {
 
     public static boolean enableOverlapPrevention;
     public static boolean logBlockedStructures;
-    public static boolean preventRepeatedAttempts;
+    public static boolean use3DOverlapDetection;
     public static int minOverlapDistance;
     public static Set<String> structureWhitelist;
     public static Set<String> structureBlacklist;
@@ -73,7 +74,7 @@ public class Config {
     static void onLoad(final ModConfigEvent event) {
         enableOverlapPrevention = ENABLE_OVERLAP_PREVENTION.get();
         logBlockedStructures = LOG_BLOCKED_STRUCTURES.get();
-        preventRepeatedAttempts = PREVENT_REPEATED_ATTEMPTS.get();
+        use3DOverlapDetection = USE_3D_OVERLAP_DETECTION.get();
         minOverlapDistance = MIN_OVERLAP_DISTANCE.get();
         structureWhitelist = new HashSet<>(STRUCTURE_WHITELIST.get());
         structureBlacklist = new HashSet<>(STRUCTURE_BLACKLIST.get());
