@@ -1,39 +1,39 @@
 package com.ankin.nostructureoverlap;
 
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.fml.event.config.ModConfigEvent;
-import net.neoforged.neoforge.common.ModConfigSpec;
+import net.minecraftforge.common.ForgeConfigSpec;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.config.ModConfigEvent;
 
 import java.util.*;
 
-@EventBusSubscriber(modid = Nostructureoverlap.MODID)
+@Mod.EventBusSubscriber(modid = Nostructureoverlap.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class Config {
-    private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
+    private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
 
-    private static final ModConfigSpec.BooleanValue ENABLE_OVERLAP_PREVENTION = BUILDER
+    private static final ForgeConfigSpec.BooleanValue ENABLE_OVERLAP_PREVENTION = BUILDER
             .comment("Enable structure overlap prevention")
             .define("enableOverlapPrevention", true);
 
-    private static final ModConfigSpec.BooleanValue LOG_BLOCKED_STRUCTURES = BUILDER
+    private static final ForgeConfigSpec.BooleanValue LOG_BLOCKED_STRUCTURES = BUILDER
             .comment("Log when structures are blocked due to overlap")
             .define("logBlockedStructures", true);
 
 
-    private static final ModConfigSpec.BooleanValue USE_3D_OVERLAP_DETECTION = BUILDER
+    private static final ForgeConfigSpec.BooleanValue USE_3D_OVERLAP_DETECTION = BUILDER
             .comment("Use 3D overlap detection instead of 2D (X-Z only). 3D prevents underground structures from blocking surface structures and vice versa.")
             .define("use3DOverlapDetection", true);
 
-    private static final ModConfigSpec.IntValue MIN_OVERLAP_DISTANCE = BUILDER
+    private static final ForgeConfigSpec.IntValue MIN_OVERLAP_DISTANCE = BUILDER
             .comment("Minimum distance between structure centers to prevent overlap (in blocks)")
             .defineInRange("minOverlapDistance", 16, 1, 1000);
 
-    private static final ModConfigSpec.ConfigValue<List<? extends String>> STRUCTURE_WHITELIST = BUILDER
+    private static final ForgeConfigSpec.ConfigValue<List<? extends String>> STRUCTURE_WHITELIST = BUILDER
             .comment("List of structure IDs that should have overlap prevention enabled. If empty, all structures are included.",
                     "Note: Use the actual Minecraft registry names (e.g., minecraft:village_plains, minecraft:stronghold)")
             .define("structureWhitelist", Arrays.asList(), Config::isValidStructureIdList);
 
-    private static final ModConfigSpec.ConfigValue<List<? extends String>> STRUCTURE_BLACKLIST = BUILDER
+    private static final ForgeConfigSpec.ConfigValue<List<? extends String>> STRUCTURE_BLACKLIST = BUILDER
             .comment("List of structure IDs that should have overlap prevention disabled",
                     "Note: Use the actual Minecraft registry names, not display names.",
                     "Common structure names: minecraft:jigsawstructure, minecraft:netherfossilstructure,",
@@ -49,17 +49,17 @@ public class Config {
                 "minecraft:alternatejigsawstructure"
             ), Config::isValidStructureIdList);
 
-    private static final ModConfigSpec.ConfigValue<List<? extends String>> STRUCTURE_SPECIFIC_DISTANCES_RAW = BUILDER
+    private static final ForgeConfigSpec.ConfigValue<List<? extends String>> STRUCTURE_SPECIFIC_DISTANCES_RAW = BUILDER
             .comment("Per-structure minimum overlap distances. Format: [\"structure_id=distance\", \"another_id=32\"]",
                     "Note: Use actual Minecraft registry names (e.g., \"minecraft:village_plains=64\", \"minecraft:stronghold=32\")")
             .define("structureSpecificDistances", Arrays.asList(), Config::isValidStructureDistanceList);
 
-    private static final ModConfigSpec.ConfigValue<List<? extends String>> STRUCTURE_SPECIFIC_ENABLED_RAW = BUILDER
+    private static final ForgeConfigSpec.ConfigValue<List<? extends String>> STRUCTURE_SPECIFIC_ENABLED_RAW = BUILDER
             .comment("Per-structure enable/disable settings. Format: [\"structure_id=true\", \"another_id=false\"]",
                     "Note: Use actual Minecraft registry names (e.g., \"minecraft:village_plains=true\", \"minecraft:stronghold=false\")")
             .define("structureSpecificEnabled", Arrays.asList(), Config::isValidStructureBooleanList);
 
-    static final ModConfigSpec SPEC = BUILDER.build();
+    static final ForgeConfigSpec SPEC = BUILDER.build();
 
     public static boolean enableOverlapPrevention;
     public static boolean logBlockedStructures;
@@ -78,7 +78,7 @@ public class Config {
         minOverlapDistance = MIN_OVERLAP_DISTANCE.get();
         structureWhitelist = new HashSet<>(STRUCTURE_WHITELIST.get());
         structureBlacklist = new HashSet<>(STRUCTURE_BLACKLIST.get());
-        
+
         // Parse structure-specific distances from list format
         structureSpecificDistances = new LinkedHashMap<>();
         for (String entry : STRUCTURE_SPECIFIC_DISTANCES_RAW.get()) {
@@ -91,7 +91,7 @@ public class Config {
                 }
             }
         }
-        
+
         // Parse structure-specific enabled settings from list format
         structureSpecificEnabled = new LinkedHashMap<>();
         for (String entry : STRUCTURE_SPECIFIC_ENABLED_RAW.get()) {
@@ -161,17 +161,17 @@ public class Config {
         if (structureSpecificEnabled.containsKey(structureId)) {
             return structureSpecificEnabled.get(structureId);
         }
-        
+
         // Check blacklist
         if (structureBlacklist.contains(structureId)) {
             return false;
         }
-        
+
         // Check whitelist (if not empty, only whitelisted structures are enabled)
         if (!structureWhitelist.isEmpty()) {
             return structureWhitelist.contains(structureId);
         }
-        
+
         // Default to enabled if no specific rules
         return true;
     }

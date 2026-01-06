@@ -17,10 +17,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(Structure.class)
 public class StructureMixin {
     private static final Logger LOGGER = LogUtils.getLogger();
-    
+
     /**
      * Intercept structure generation at the Structure level.
-     * This uses the correct method signature for NeoForge 21.1.208.
+     * This uses the correct method signature for Forge 1.20.1.
      */
     @Inject(method = "generate", at = @At("HEAD"), cancellable = true)
     private void onGenerate(net.minecraft.core.RegistryAccess registryAccess,
@@ -37,34 +37,34 @@ public class StructureMixin {
         if (!Config.enableOverlapPrevention) {
             return;
         }
-        
+
         // Get the structure position
         BlockPos center = chunkPos.getMiddleBlockPosition(0);
-        
+
         // Get structure ID
         ResourceLocation structureId = getStructureId((Structure) (Object) this);
-        
+
         // Check if this structure is enabled for overlap prevention
         if (!Config.isStructureEnabled(structureId.toString())) {
             return;
         }
-        
+
         // Validate structure placement before any generation work
         if (!StructurePlacementValidator.canPlaceStructureAt(center, structureId, null)) {
             if (Config.logBlockedStructures) {
-                LOGGER.debug("Blocked structure {} at chunk ({}, {}) due to overlap prevention", 
+                LOGGER.debug("Blocked structure {} at chunk ({}, {}) due to overlap prevention",
                     structureId, chunkPos.x, chunkPos.z);
             }
-            
+
             // Return invalid start to prevent structure placement
             cir.setReturnValue(StructureStart.INVALID_START);
             return;
         }
-        
+
         // If placement is allowed, register it for future overlap checks
         StructurePlacementValidator.registerStructurePlacement(center, structureId, null);
     }
-    
+
     /**
      * Get the ResourceLocation for a structure.
      * Uses class name as fallback for API compatibility.
@@ -81,9 +81,9 @@ public class StructureMixin {
         } catch (Exception e) {
             // Fallback to class name approach
         }
-        
+
         // Fallback to class name approach
         String structureName = structure.getClass().getSimpleName().toLowerCase();
-        return ResourceLocation.fromNamespaceAndPath("minecraft", structureName);
+        return new ResourceLocation("minecraft", structureName);
     }
 }

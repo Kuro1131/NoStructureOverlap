@@ -1,16 +1,15 @@
 package com.ankin.nostructureoverlap;
 
 import com.mojang.logging.LogUtils;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.ModContainer;
-import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.config.ModConfig;
-import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.RegisterCommandsEvent;
-import net.neoforged.neoforge.event.server.ServerStartingEvent;
-import net.neoforged.neoforge.event.level.LevelEvent;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.RegisterCommandsEvent;
+import net.minecraftforge.event.server.ServerStartingEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.ModLoadingContext;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import org.slf4j.Logger;
@@ -20,15 +19,15 @@ public class Nostructureoverlap {
     public static final String MODID = "nostructureoverlap";
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    public Nostructureoverlap(IEventBus modEventBus, ModContainer modContainer) {
+    public Nostructureoverlap() {
         // Register the commonSetup method for modloading
-        modEventBus.addListener(this::commonSetup);
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::commonSetup);
 
         // Register ourselves for server and other game events we are interested in
-        NeoForge.EVENT_BUS.register(this);
+        MinecraftForge.EVENT_BUS.register(this);
 
         // Register our mod's ModConfigSpec so that FML can create and load the config file for us
-        modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.SPEC);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
@@ -43,24 +42,15 @@ public class Nostructureoverlap {
         LOGGER.info("NoStructureOverlap: Server starting - structure overlap prevention active");
         LOGGER.info("NoStructureOverlap: 3D overlap detection is " + (Config.use3DOverlapDetection ? "enabled" : "disabled"));
     }
-    
-    @SubscribeEvent
-    public void onLevelLoad(LevelEvent.Load event) {
-        if (event.getLevel().isClientSide()) {
-            LOGGER.info("NoStructureOverlap: Client level loaded - structure overlap prevention ready");
-        } else {
-            LOGGER.info("NoStructureOverlap: Server level loaded - structure overlap prevention active");
-        }
-    }
-    
+
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("nostructureoverlap")
             .then(Commands.literal("status")
                 .executes(context -> {
                     int structureCount = StructurePlacementValidator.getStructureCount();
-                    context.getSource().sendSuccess(() -> Component.literal("NoStructureOverlap Status: " + 
-                        (Config.enableOverlapPrevention ? "Enabled" : "Disabled") + 
+                    context.getSource().sendSuccess(() -> Component.literal("NoStructureOverlap Status: " +
+                        (Config.enableOverlapPrevention ? "Enabled" : "Disabled") +
                         " | Tracked Structures: " + structureCount), false);
                     return structureCount;
                 }))
@@ -80,14 +70,14 @@ public class Nostructureoverlap {
             .then(Commands.literal("toggle")
                 .executes(context -> {
                     Config.enableOverlapPrevention = !Config.enableOverlapPrevention;
-                    context.getSource().sendSuccess(() -> Component.literal("Overlap prevention " + 
+                    context.getSource().sendSuccess(() -> Component.literal("Overlap prevention " +
                         (Config.enableOverlapPrevention ? "enabled" : "disabled")), true);
                     return 1;
                 }))
             .then(Commands.literal("toggle3D")
                 .executes(context -> {
                     Config.use3DOverlapDetection = !Config.use3DOverlapDetection;
-                    context.getSource().sendSuccess(() -> Component.literal("3D overlap detection " + 
+                    context.getSource().sendSuccess(() -> Component.literal("3D overlap detection " +
                         (Config.use3DOverlapDetection ? "enabled" : "disabled (using 2D only)")), true);
                     return 1;
                 }))
@@ -100,7 +90,7 @@ public class Nostructureoverlap {
                     info.append("• Min Overlap Distance: ").append(Config.minOverlapDistance).append(" blocks\n");
                     info.append("• Log Blocked Structures: ").append(Config.logBlockedStructures ? "Enabled" : "Disabled").append("\n");
                     info.append("• Tracked Structures: ").append(StructurePlacementValidator.getStructureCount()).append("\n");
-                    
+
                     if (!Config.structureWhitelist.isEmpty()) {
                         info.append("• Whitelisted Structures: ").append(Config.structureWhitelist.size()).append("\n");
                     }
@@ -113,7 +103,7 @@ public class Nostructureoverlap {
                     if (!Config.structureSpecificEnabled.isEmpty()) {
                         info.append("• Custom Enabled/Disabled Structures: ").append(Config.structureSpecificEnabled.size()).append("\n");
                     }
-                    
+
                     context.getSource().sendSuccess(() -> Component.literal(info.toString()), false);
                     return 1;
                 }))
@@ -121,7 +111,7 @@ public class Nostructureoverlap {
                 .executes(context -> {
                     StringBuilder structures = new StringBuilder();
                     structures.append("Structure Configuration:\n");
-                    
+
                     if (!Config.structureWhitelist.isEmpty()) {
                         structures.append("Whitelisted: ").append(String.join(", ", Config.structureWhitelist)).append("\n");
                     }
@@ -130,19 +120,19 @@ public class Nostructureoverlap {
                     }
                     if (!Config.structureSpecificDistances.isEmpty()) {
                         structures.append("Custom Distances:\n");
-                        Config.structureSpecificDistances.forEach((id, distance) -> 
+                        Config.structureSpecificDistances.forEach((id, distance) ->
                             structures.append("  ").append(id).append(": ").append(distance).append(" blocks\n"));
                     }
                     if (!Config.structureSpecificEnabled.isEmpty()) {
                         structures.append("Custom Enabled/Disabled:\n");
-                        Config.structureSpecificEnabled.forEach((id, enabled) -> 
+                        Config.structureSpecificEnabled.forEach((id, enabled) ->
                             structures.append("  ").append(id).append(": ").append(enabled ? "Enabled" : "Disabled").append("\n"));
                     }
-                    
+
                     if (structures.toString().equals("Structure Configuration:\n")) {
                         structures.append("No structure-specific configurations set (using defaults)");
                     }
-                    
+
                     context.getSource().sendSuccess(() -> Component.literal(structures.toString()), false);
                     return 1;
                 }))
